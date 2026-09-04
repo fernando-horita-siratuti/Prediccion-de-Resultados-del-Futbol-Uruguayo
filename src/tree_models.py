@@ -4,10 +4,8 @@ from collections import Counter
 from sklearn.base import BaseEstimator, ClassifierMixin
 
 class Node:
-    """
-    Representa um nó da árvore de decisão.
-    Se 'value' não for None, é um nó folha. Caso contrário, é um nó de decisão.
-    """
+    """Clase que representa un nodo en el árbol de decisión."""
+    
     def __init__(self, feature_index=None, feature_name=None, threshold=None, 
                  is_categorical=False, left=None, right=None, 
                  categorical_children=None, value=None):
@@ -27,6 +25,8 @@ class Node:
         self.value = value 
 
 class DecisionTreeClassifierCustom(BaseEstimator, ClassifierMixin):
+    """Implementación personalizada de un clasificador de árbol de decisión."""
+    
     def __init__(self, min_info_gain=0.0):
         
         self.min_info_gain = min_info_gain
@@ -34,9 +34,7 @@ class DecisionTreeClassifierCustom(BaseEstimator, ClassifierMixin):
         self.classes_ = None
 
     def fit(self, X, y):
-        """
-        Treina a árvore de decisão. Compatível com o pipeline do scikit-learn.
-        """
+        """Entrena el árbol de decisión utilizando los datos de entrenamiento (X, y)."""
         
         self.feature_names_ = X.columns.tolist() if isinstance(X, pd.DataFrame) else [f"feature_{i}" for i in range(X.shape[1])]
         
@@ -58,6 +56,8 @@ class DecisionTreeClassifierCustom(BaseEstimator, ClassifierMixin):
         return self
 
     def _build_tree(self, X, y):
+        """Construye el árbol de forma recursiva dividiendo los datos para maximizar la ganancia de información."""
+        
         n_samples, n_features = X.shape
         n_labels = len(np.unique(y))
 
@@ -99,6 +99,8 @@ class DecisionTreeClassifierCustom(BaseEstimator, ClassifierMixin):
                         left=left_child, right=right_child)
 
     def _best_split(self, X, y):
+        """Encuentra la mejor característica y el umbral óptimo para dividir los datos en un nodo."""
+        
         best_gain = -1
         split_idx, split_threshold = None, None
         current_entropy = self._calculate_entropy(y)
@@ -130,6 +132,7 @@ class DecisionTreeClassifierCustom(BaseEstimator, ClassifierMixin):
         return split_idx, split_threshold, best_gain
 
     def _information_gain_numerical(self, X_column, y, threshold, current_entropy):
+        """Calcula la ganancia de información para un posible corte en una variable numérica."""
         
         left_idx = np.where(X_column <= threshold)[0]
         right_idx = np.where(X_column > threshold)[0]
@@ -146,6 +149,8 @@ class DecisionTreeClassifierCustom(BaseEstimator, ClassifierMixin):
         return current_entropy - child_entropy
 
     def _information_gain_categorical(self, X_column, y, current_entropy):
+        """Calcula la ganancia de información para una variable categórica separando por sus valores únicos."""
+        
         unique_values = np.unique(X_column)
         n = len(y)
         child_entropy = 0
@@ -160,12 +165,15 @@ class DecisionTreeClassifierCustom(BaseEstimator, ClassifierMixin):
         return current_entropy - child_entropy
 
     def _calculate_entropy(self, y):
+        """Calcula la entropía de un conjunto de etiquetas, como medida de su nivel de impureza/desorden."""
         
         counts = np.bincount(y) if np.issubdtype(y.dtype, np.integer) else Counter(y).values()
         probabilities = [count / len(y) for count in counts if count > 0]
         return -np.sum([p * np.log2(p) for p in probabilities])
 
     def _most_common_label(self, y):
+        """Devuelve la etiqueta de clase más frecuente, que se utilizará como valor de predicción en los nodos hoja."""
+       
         if len(y) == 0:
             return None
         counter = Counter(y)
@@ -173,6 +181,7 @@ class DecisionTreeClassifierCustom(BaseEstimator, ClassifierMixin):
         return counter.most_common(1)[0][0]
 
     def predict(self, X):
+        """Predice las clases de las muestras en X haciendo que cada una recorra el árbol entrenado."""
         
         if isinstance(X, pd.DataFrame):
             X_arr = X.values
@@ -183,6 +192,7 @@ class DecisionTreeClassifierCustom(BaseEstimator, ClassifierMixin):
         return np.array([self._traverse_tree(x, self.tree_) for x in X_arr])
 
     def _traverse_tree(self, x, node):
+        """Función recursiva para llevar una muestra específica a través del árbol hasta llegar a una hoja."""
         
         if node.value is not None and (not node.is_categorical or node.categorical_children is None):
             return node.value
