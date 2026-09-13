@@ -37,9 +37,6 @@ class TeamFormTransformer(BaseEstimator, TransformerMixin):
     Calcula, para cada partido, la tasa de victorias reciente (últimos `window_years`
     años) del equipo local y del equipo visitante, usando solo partidos ANTERIORES
     a la fecha del partido actual (sin data leakage).
-
-    IMPORTANTE: requiere que 'home', 'away' y 'date' (datetime) sigan presentes en X,
-    por lo que debe ir ANTES de DateTransformer (que elimina 'date') en el pipeline.
     """
 
     def __init__(self, window_years=10):
@@ -83,10 +80,13 @@ class TeamFormTransformer(BaseEstimator, TransformerMixin):
 
     def transform(self, X):
         X_new = X.copy()
-        # Arredondado a 2 decimales: reduce miles de valores únicos posibles a ~100,
-        # lo que acelera muchísimo la búsqueda de umbral en el árbol propio (que prueba
-        # cada valor único como candidato de corte). Si aún tarda demasiado, prueben
-        # con 1 decimal (~10 valores posibles).
+        """
+        Arredondado a 2 decimales: reduce miles de valores únicos posibles a ~100,
+        lo que acelera muchísimo la búsqueda de umbral en el árbol propio (que prueba
+        cada valor único como candidato de corte). Si aún tarda demasiado, prueben
+        con 1 decimal (~10 valores posibles).
+        """
+
         X_new['home_form'] = [round(self._tasa_victoria(t, d), 2) for t, d in zip(X_new['home'], X_new['date'])]
         X_new['away_form'] = [round(self._tasa_victoria(t, d), 2) for t, d in zip(X_new['away'], X_new['date'])]
         return X_new
@@ -97,6 +97,7 @@ def get_train_test_data(filepath='../data/raw/futbol_uruguayo.csv'):
     Carga el conjunto de datos, genera la variable objetivo (ganador) y divide
     los datos en conjuntos de entrenamiento (hasta 2023) y prueba (desde 2024).
     """
+
     df = pd.read_csv(filepath)
     df = df.drop_duplicates()
     df['date'] = pd.to_datetime(df['date'])
