@@ -99,7 +99,7 @@ This project was developed for the *Aprendizaje Automático* course at Facultad 
 
 - **Rol 1 (Pipeline & Baseline)**: Anastasia Martucci
 - **Rol 2 (Tree Models)**: Fernando Horita Siratuti
-- **Rol 3 (Naive Bayes)**: [Nome do Colega]
+- **Rol 3 (Naive Bayes)**: Ismael 
 
 ## <a id="license"></a>📄 License
 
