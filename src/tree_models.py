@@ -27,9 +27,10 @@ class Node:
 class DecisionTreeClassifierCustom(BaseEstimator, ClassifierMixin):
     """Implementación personalizada de un clasificador de árbol de decisión."""
     
-    def __init__(self, min_info_gain=0.0):
-        
+    def __init__(self, min_info_gain=0.0, max_depth=None, min_samples_split=2):
         self.min_info_gain = min_info_gain
+        self.max_depth = max_depth
+        self.min_samples_split = min_samples_split
         self.tree_ = None
         self.classes_ = None
 
@@ -38,62 +39,56 @@ class DecisionTreeClassifierCustom(BaseEstimator, ClassifierMixin):
         
         self.feature_names_ = X.columns.tolist() if isinstance(X, pd.DataFrame) else [f"feature_{i}" for i in range(X.shape[1])]
         
-        
         if isinstance(X, pd.DataFrame):
-            
             self.is_categorical_ = [X.iloc[:, i].dtype.kind in 'O|U' for i in range(X.shape[1])]
             X_arr = X.values
         else:
             X_arr = np.array(X)
-            
             self.is_categorical_ = [isinstance(X_arr[0, i], str) for i in range(X_arr.shape[1])]
             
         y_arr = np.array(y)
         self.classes_ = np.unique(y_arr)
         
-        
-        self.tree_ = self._build_tree(X_arr, y_arr)
+        self.tree_ = self._build_tree(X_arr, y_arr, depth=0)
         return self
 
-    def _build_tree(self, X, y):
+    def _build_tree(self, X, y, depth=0):
         """Construye el árbol de forma recursiva dividiendo los datos para maximizar la ganancia de información."""
         
         n_samples, n_features = X.shape
         n_labels = len(np.unique(y))
 
-        
         if n_labels <= 1 or n_samples == 0:
             return Node(value=self._most_common_label(y))
 
-        
+        if self.max_depth is not None and depth >= self.max_depth:
+            return Node(value=self._most_common_label(y))
+
+        if n_samples < self.min_samples_split:
+            return Node(value=self._most_common_label(y))
+
         best_feature, best_threshold, best_gain = self._best_split(X, y)
 
-        
         if best_feature is None or best_gain <= self.min_info_gain:
             return Node(value=self._most_common_label(y))
 
-        
         is_cat = self.is_categorical_[best_feature]
         
         if is_cat:
-            
             categorical_children = {}
             unique_values = np.unique(X[:, best_feature])
             for val in unique_values:
-                
                 idx = np.where(X[:, best_feature] == val)[0]
-                
-                categorical_children[val] = self._build_tree(X[idx, :], y[idx])
+                categorical_children[val] = self._build_tree(X[idx, :], y[idx], depth=depth + 1)
             return Node(feature_index=best_feature, feature_name=self.feature_names_[best_feature],
                         is_categorical=True, categorical_children=categorical_children, 
                         value=self._most_common_label(y)) 
         else:
-            
             left_idx = np.where(X[:, best_feature] <= best_threshold)[0]
             right_idx = np.where(X[:, best_feature] > best_threshold)[0]
             
-            left_child = self._build_tree(X[left_idx, :], y[left_idx])
-            right_child = self._build_tree(X[right_idx, :], y[right_idx])
+            left_child = self._build_tree(X[left_idx, :], y[left_idx], depth=depth + 1)
+            right_child = self._build_tree(X[right_idx, :], y[right_idx], depth=depth + 1)
             return Node(feature_index=best_feature, feature_name=self.feature_names_[best_feature],
                         threshold=best_threshold, is_categorical=False, 
                         left=left_child, right=right_child)
